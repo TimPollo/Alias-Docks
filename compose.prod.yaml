@@ -1,0 +1,49 @@
+# Public deployment. Requires an actual domain, public IP, DNS, and port 25 inbound.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"   # Trust ONLY Caddy (app has no public HTTP port)
+    ports:
+      - "25:2525"  # Inbound SMTP, never an outgoing relay
+    expose:
+      - "8000"
+    volumes:
+      - maildata:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  caddy:
+    image: caddy:2.9.1-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - internal
+networks:
+  internal:
+volumes:
+  maildata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,19 @@
+# Local sandbox. No public internet delivery without DNS + exposed port 25.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      COOKIE_SECURE: "false"   # HTTP permitted ONLY on 127.0.0.1 for local testing
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:2525:2525"
+    volumes:
+      - maildata:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  maildata:
